@@ -483,3 +483,63 @@ U_BOOT_CMD(
 );
 
 #endif  /* CONFIG_CMD_LINK_LOCAL */
+
+#ifdef CONFIG_NET6
+#include <net6.h>
+static int do_ipv6_test(cmd_tbl_t *cmdtp, int flag, int argc,
+                        char * const argv[])
+{
+	struct in6_addr addr6 = {.s6_addr16[0] = htons(0x2001), .s6_addr16[1] = htons(0x1234), .s6_addr16[7] = htons(0x0001)};
+	struct in6_addr mapped = {.s6_addr16[5] = htons(0xffff), .s6_addr16[6] = htons(0xc0a8), .s6_addr16[7] = htons(0x0101)};
+	struct in6_addr isatap = {.s6_addr16[5] = htons(0x5efe), .s6_addr16[6] = htons(0xc0a8), .s6_addr16[7] = htons(0x0101)};
+	struct in_addr addr4 = {.s_addr = htonl(0x7f000001)};
+	const char *valid_strings[] = {
+		"::1",
+		"::ffff:192.168.1.1",
+		"2001::0:1234:1",
+		"2001:1234:5678:abcd:2001:1234:5678:abcd"
+	};
+	const char *invalid_strings[] = {
+		"asdf",
+		"::1::1",
+		"2001::0::0",
+		"2001:192.168.1.1::1",
+		"192.168.1.1",
+	};
+	int i;
+
+	printf("addr6=%pi6\n", &addr6);
+	printf("addr6=%pI6\n", &addr6);
+	printf("addr6=%pI6c\n", &addr6);
+	printf("mapped=%pI6c\n", &mapped);
+	printf("isatap=%pI6c\n", &isatap);
+	printf("addr4=%pI4\n", &addr4);
+
+	for (i = 0; i < ARRAY_SIZE(valid_strings); i++) {
+		struct in6_addr addr;
+		int ret = string_to_ip6(valid_strings[i], &addr);
+
+		printf("%-40s is %s\n", valid_strings[i], ret == 0 ? "OK" : "BAD");
+		if (ret == 0)
+			printf("  %pi6\n", &addr);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(invalid_strings); i++) {
+		struct in6_addr addr;
+		int ret = string_to_ip6(invalid_strings[i], &addr);
+
+		printf("%-40s is %s\n", invalid_strings[i],
+			ret == 0 ? "OK (unexpected)" : "BAD (expected)");
+		if (ret == 0)
+			printf("  %pi6\n", &addr);
+	}
+
+	return 0;
+}
+
+U_BOOT_CMD(
+	ipv6test,	1,	1,	do_ipv6_test,
+	"ipv6test",
+	""
+);
+#endif
