@@ -922,12 +922,15 @@ The following options need to be configured:
 		CONFIG_CMD_MTDPARTS	* MTD partition support
 		CONFIG_CMD_NAND		* NAND support
 		CONFIG_CMD_NET		  bootp, tftpboot, rarpboot
+		CONFIG_CMD_NET6		* tftpboot6
 		CONFIG_CMD_NFS		  NFS support
 		CONFIG_CMD_PCA953X	* PCA953x I2C gpio commands
 		CONFIG_CMD_PCA953X_INFO * PCA953x I2C gpio info command
 		CONFIG_CMD_PCI		* pciinfo
 		CONFIG_CMD_PCMCIA		* PCMCIA support
 		CONFIG_CMD_PING		* send ICMP ECHO_REQUEST to network
+					  host
+		CONFIG_CMD_PING6	* send ICMPv6 ECHO_REQUEST to network
 					  host
 		CONFIG_CMD_PORTIO	* Port I/O
 		CONFIG_CMD_READ		* Read raw data from partition
