@@ -26,3 +26,5 @@ obj-$(CONFIG_CMD_RARP) += rarp.o
 obj-$(CONFIG_CMD_SNTP) += sntp.o
 obj-$(CONFIG_CMD_NET)  += tftp.o
 obj-$(CONFIG_NET6)     += net6.o
+obj-$(CONFIG_NET6)     += ndisc.o
+obj-$(CONFIG_CMD_PING6) += ping6.o
