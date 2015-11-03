@@ -504,6 +504,15 @@ config CMD_NET
 	  bootp - boot image via network using BOOTP/TFTP protocol
 	  tftpboot - boot image via network using TFTP protocol
 
+config CMD_NET6
+	bool "ipv6 commands"
+	select NET
+	select NET6
+	default n
+	help
+	  IPv6 network commands
+	  tftpboot6 - boot image via network using TFTP protocol
+
 config CMD_TFTPPUT
 	bool "tftp put"
 	help

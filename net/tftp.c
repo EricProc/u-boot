@@ -11,6 +11,7 @@
 #include <efi_loader.h>
 #include <mapmem.h>
 #include <net.h>
+#include <net6.h>
 #include <net/tftp.h>
 #include "bootp.h"
 #ifdef CONFIG_SYS_DIRECT_FLASH_TFTP
@@ -67,6 +68,9 @@ enum {
 };
 
 static struct in_addr tftp_remote_ip;
+#ifdef CONFIG_CMD_NET6
+static struct in6_addr tftp_remote_ip6;
+#endif
 /* The UDP port at their end */
 static int	tftp_remote_port;
 /* The UDP port at our end */
@@ -94,6 +98,10 @@ static int	tftp_put_active;
 static int	tftp_put_final_block_sent;
 #else
 #define tftp_put_active	0
+#endif
+#ifdef CONFIG_CMD_NET6
+/* 1 if using IPv6, else 0 */
+static int      tftp6_active;
 #endif
 
 #define STATE_SEND_RRQ	1
@@ -130,6 +138,8 @@ static char tftp_filename[MAX_LEN];
 #else
 #define TFTP_MTU_BLOCKSIZE 1468
 #endif
+/* IPv6 adds 20 bytes extra overhead */
+#define TFTP_MTU_BLOCKSIZE6 (TFTP_MTU_BLOCKSIZE - 20)
 
 static unsigned short tftp_block_size = TFTP_BLOCK_SIZE;
 static unsigned short tftp_block_size_option = TFTP_MTU_BLOCKSIZE;
@@ -342,6 +352,12 @@ static void tftp_send(void)
 	 *	We will always be sending some sort of packet, so
 	 *	cobble together the packet headers now.
 	 */
+#ifdef CONFIG_CMD_NET6
+	if (tftp6_active)
+		pkt = net_tx_packet + net_eth_hdr_size() +
+		      IP6_HDR_SIZE + UDP_HDR_SIZE;
+	else
+#endif
 	pkt = net_tx_packet + net_eth_hdr_size() + IP_UDP_HDR_SIZE;
 
 	switch (tftp_state) {
@@ -441,6 +457,12 @@ static void tftp_send(void)
 		break;
 	}
 
+#ifdef CONFIG_CMD_NET6
+	if (tftp6_active)
+		net_send_udp_packet6(net_server_ethaddr, &tftp_remote_ip6,
+				     tftp_remote_port, tftp_our_port, len);
+	else
+#endif
 	net_send_udp_packet(net_server_ethaddr, tftp_remote_ip,
 			    tftp_remote_port, tftp_our_port, len);
 }
@@ -734,6 +756,10 @@ void tftp_start(enum proto_t protocol)
 	debug("TFTP blocksize = %i, timeout = %ld ms\n",
 	      tftp_block_size_option, timeout_ms);
 
+#ifdef CONFIG_CMD_NET6
+	tftp6_active = (protocol == TFTP6);
+	tftp_remote_ip6 = net_server_ip6;
+#endif
 	tftp_remote_ip = net_server_ip;
 	if (net_boot_file_name[0] == '\0') {
 		sprintf(default_filename, "%02X%02X%02X%02X.img",
@@ -747,6 +773,20 @@ void tftp_start(enum proto_t protocol)
 
 		printf("*** Warning: no boot file name; using '%s'\n",
 		       tftp_filename);
+#ifdef CONFIG_CMD_NET6
+	} else if (tftp6_active) {
+		char *s, *e;
+		s = strchr(net_boot_file_name, '[');
+		e = strchr(net_boot_file_name, ']');
+		if (s && e) {
+			*e++ = 0;
+			string_to_ip6(s + 1, &tftp_remote_ip6);
+			strncpy(tftp_filename, e + 1, MAX_LEN);
+		} else {
+			strncpy(tftp_filename, net_boot_file_name, MAX_LEN);
+			tftp_filename[MAX_LEN - 1] = 0;
+		}
+#endif
 	} else {
 		char *p = strchr(net_boot_file_name, ':');
 
@@ -761,6 +801,15 @@ void tftp_start(enum proto_t protocol)
 	}
 
 	printf("Using %s device\n", eth_get_name());
+#ifdef CONFIG_CMD_NET6
+	if (tftp6_active) {
+		printf("TFTP from server %pI6c; our IP address is %pI6c",
+		       &tftp_remote_ip6,
+		       &net_ip6);
+		if (tftp_block_size_option > TFTP_MTU_BLOCKSIZE6)
+			tftp_block_size_option = TFTP_MTU_BLOCKSIZE6;
+	} else
+#endif
 	printf("TFTP %s server %pI4; our IP address is %pI4",
 #ifdef CONFIG_CMD_TFTPPUT
 	       protocol == TFTPPUT ? "to" : "from",
@@ -770,6 +819,15 @@ void tftp_start(enum proto_t protocol)
 	       &tftp_remote_ip, &net_ip);
 
 	/* Check if we need to send across this subnet */
+#ifdef CONFIG_CMD_NET6
+	if (tftp6_active) {
+		if (!ip6_addr_in_subnet(&net_ip6, &tftp_remote_ip6,
+					net_prefix_length)) {
+			printf("; sending through gateway %pI6c",
+			       &net_gateway6);
+		}
+	} else
+#endif
 	if (net_gateway.s_addr && net_netmask.s_addr) {
 		struct in_addr our_net;
 		struct in_addr remote_net;
