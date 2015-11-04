@@ -32,6 +32,11 @@ config NET_TFTP_VARS
 	  If unset, timeout and maximum are hard-defined as 1 second
 	  and 10 timouts per TFTP transfer.
 
+config NET6
+	bool "IPv6 support"
+	help
+	  Support for IPv6
+
 config BOOTP_PXE_CLIENTARCH
 	hex
         default 0x16 if ARM64
@@ -44,5 +49,4 @@ config BOOTP_VCI_STRING
 	default "U-Boot.armv8" if ARM64
 	default "U-Boot.arm" if ARM
 	default "U-Boot"
-
 endif   # if NET
